@@ -2,10 +2,13 @@
 export interface loginForm {
   username: string
   password: string
+  verifyCode: string
 }
 
 interface dataType {
-  token: string
+  // ? 表示可选
+  token?: string
+  message?: string
 }
 
 // 登录接口返回数据类型

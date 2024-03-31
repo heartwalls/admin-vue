@@ -7,7 +7,7 @@ enum API {
   USERINFO_URL = '/user/info',
 }
 // 暴露请求函数
-export const login = (data: loginForm) =>
+export const reqLogin = (data: loginForm) =>
   request.post<any, loginResponseData>(API.LOGIN_URL, data)
 export const userInfo = () =>
   request.get<any, userResponseData>(API.USERINFO_URL)

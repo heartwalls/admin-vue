@@ -2,8 +2,8 @@
 
 <template>
   <div>
-    <router-view></router-view>
+    <h1>主页一级路由</h1>
   </div>
 </template>
 
-<style scoped lang="scss"></style>
+<style scoped></style>
