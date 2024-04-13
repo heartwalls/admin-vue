@@ -4,10 +4,17 @@ export const constantRoute = [
     path: '/login',
     component: () => import('@/views/login/index.vue'),
     name: 'login', // 命名路由，权限管理时使用
+    children: [
+      {
+        path: '/',
+        component: () => import('@/views/home/index.vue'),
+        name: 'home',
+      },
+    ],
   },
   {
     path: '/',
-    component: () => import('@/views/home/index.vue'),
+    component: () => import('@/layout/index.vue'),
     name: 'home',
   },
   {

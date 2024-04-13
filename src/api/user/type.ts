@@ -2,7 +2,8 @@
 export interface loginForm {
   username: string
   password: string
-  verifyCode: string
+  captcha: string
+  codeKey: string
 }
 
 interface dataType {

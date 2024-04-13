@@ -1,49 +1,76 @@
 <script setup lang="ts">
 import { User, Lock, Check } from '@element-plus/icons-vue'
 import { ElNotification } from 'element-plus'
-import type { FormRules } from 'element-plus'
-import { reactive, ref } from 'vue'
+import type { FormRules, FormInstance } from 'element-plus'
+import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 // 引入user相关的Pinia仓库
 import useUserStore from '@/store/modules/user'
 import { getTime } from '@/utils/time'
+import { getVerifyCode } from '@/api/user'
+import router from '@/router'
 
 const $router = useRouter()
 const useStore = useUserStore()
 const loading = ref(false)
 // 表单验证
-const ruleFormRef = ref()
-
+const ruleFormRef = ref<FormInstance>()
+onMounted(() => {
+  refreshVerifyCode()
+})
+// 第一次打开登录页刷新验证码
+let verify = reactive({
+  verifyCodeSrc: '',
+})
+//let verifyCodeSrc = ref(getVerifyCode())
 const loginForm = reactive({
   username: '',
   password: '',
-  verifyCode: '',
+  captcha: '', // 用户输入的验证码
+  codeKey: '', // 后端返回的验证码key
 })
 
-const submitForm = async () => {
-  await ruleFormRef.value.validate()
-  // 登录加载效果
-  loading.value = true
-  // 登录请求
-  try {
-    await useStore.userLogin(loginForm)
-    // 登录成功后清除登录加载效果
-    // TODO 可以在加载的时候限制点击登录的次数，减少服务器压力
-    loading.value = false
-    // 登录成功后跳转到首页
-    $router.push('/')
-    ElNotification({
-      type: 'success',
-      title: `Hi, ${getTime()}`,
-      message: '欢迎回来',
-    })
-  } catch (error) {
-    loading.value = false
-    ElNotification({
-      type: 'error',
-      message: (error as Error).message,
-    })
-  }
+const refreshVerifyCode = async () => {
+  const { data } = await getVerifyCode()
+  //loginForm.verifyCode = data.codeKey
+  loginForm.codeKey = data.codeKey
+  //verifyCodeSrc.value = data.codeValue
+  verify.verifyCodeSrc = data.codeValue
+}
+
+const submitForm = async (formEl: FormInstance | undefined) => {
+  if (!formEl) return
+  // 登录校验
+  formEl.validate(async (valid) => {
+    // 登录加载效果
+    loading.value = true
+    if (valid) {
+      // 登录请求
+      try {
+        await useStore.userLogin(loginForm)
+        // 登录成功后清除登录加载效果
+        // TODO 可以在加载的时候限制点击登录的次数，减少服务器压力
+        loading.value = false
+        // 登录成功后跳转到首页
+        $router.push('/')
+        ElNotification({
+          type: 'success',
+          title: `Hi, ${getTime()}`,
+          message: '欢迎回来',
+        })
+      } catch (error) {
+        loading.value = false
+        ElNotification({
+          type: 'error',
+          message: (error as Error).message,
+        })
+      }
+    } else {
+      loading.value = false
+      return false
+    }
+  })
+  // await ruleFormRef.value.validate()
 }
 
 const validateUsername = (rule: any, value: any, callback: any) => {
@@ -53,7 +80,7 @@ const validateUsername = (rule: any, value: any, callback: any) => {
     callback(new Error('请输入用户名'))
   } else if (regex.test(value)) {
     callback()
-  } else{
+  } else {
     callback(new Error('用户名只能包含字母数字和下划线'))
   }
 }
@@ -80,8 +107,12 @@ const check = ref(true)
 const rules = reactive<FormRules<typeof loginForm>>({
   username: [{ validator: validateUsername, trigger: 'change' }],
   password: [{ validator: validatePassword, trigger: 'change' }],
-  verifyCode: [{ validator: validateVerifyCode, trigger: 'change' }],
+  captcha: [{ validator: validateVerifyCode, trigger: 'change' }],
 })
+
+const register = () => {
+  router.replace('/register')
+}
 
 const options = {
   fpsLimit: 60,
@@ -208,15 +239,22 @@ const options = {
           />
         </el-form-item>
         <el-form-item label="验证码：" prop="verifyCode">
-          <el-input
-            style="width: 150px"
-            v-model="loginForm.verifyCode"
-            :prefix-icon="Check"
-            placeholder="请输入验证码"
-            maxlength="4"
-            clearable
-          />
-          <img class="verifyCodeImg" />
+          <div class="verifyCode">
+            <el-input
+              style="width: 150px"
+              v-model="loginForm.captcha"
+              :prefix-icon="Check"
+              placeholder="请输入验证码"
+              maxlength="4"
+              clearable
+            />
+            <img
+              class="verifyCodeImg"
+              :src="verify.verifyCodeSrc"
+              @click="refreshVerifyCode"
+              alt=""
+            />
+          </div>
         </el-form-item>
         <el-form-item>
           <el-checkbox v-model="check" label="记住密码" />
@@ -225,12 +263,12 @@ const options = {
           class="btn"
           type="primary"
           :loading="loading"
-          @click="submitForm()"
+          @click="submitForm(ruleFormRef)"
         >
           登录
         </el-button>
         <div style="text-align: right; transform: translate(0, 30px)">
-          <el-link type="warning" @click="">没有账号？去注册</el-link>
+          <el-link type="warning" @click="register()">没有账号？去注册</el-link>
         </div>
       </el-form>
     </div>
@@ -291,6 +329,16 @@ h2 {
   color: #fff;
   text-align: center;
   /*文字居中*/
+}
+.verifyCode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.verifyCode img {
+  cursor: pointer;
+  margin-left: 0;
 }
 .btn {
   transform: translate(100px);
